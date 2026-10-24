@@ -1,4 +1,4 @@
-name: Build AetherAI Instant APK
+name: Build AetherTerminal APK
 
 on:
   push:
@@ -21,25 +21,18 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Buat Proyek Aplikasi Native Mandiri
+      - name: Buat Struktur Proyek Gradle Mandiri
         run: |
           mkdir -p myapp/app/src/main/java/com/aether/terminal
           mkdir -p myapp/app/src/main/res/values
-          mkdir -p myapp/app/src/main/res/mipmap-anydpi-v26
 
-          # Buat AndroidManifest.xml
           cat << 'END_MANIFEST' > myapp/app/src/main/AndroidManifest.xml
           <manifest xmlns:android="http://schemas.android.com/apk/res/android"
               package="com.aether.terminal">
               <uses-permission android:name="android.permission.INTERNET" />
-              <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-              <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
               <application
                   android:allowBackup="true"
-                  android:icon="@mipmap/ic_launcher"
                   android:label="Aether Terminal AI"
-                  android:roundIcon="@mipmap/ic_launcher_round"
-                  android:supportsRtl="true"
                   android:theme="@android:style/Theme.Material.NoActionBar">
                   <activity
                       android:name=".MainActivity"
@@ -53,7 +46,6 @@ jobs:
           </manifest>
           END_MANIFEST
 
-          # Buat build.gradle
           cat << 'END_GRADLE' > myapp/app/build.gradle
           plugins {
               id 'com.android.application'
@@ -69,14 +61,9 @@ jobs:
                   versionCode 1
                   versionName "1.0"
               }
-              buildTypes {
-                release {
-                    minifyEnabled false
-                }
-              }
               compileOptions {
-                  sourceCompatibility JavaVersion.VERSION_1_7
-                  targetCompatibility JavaVersion.VERSION_1_7
+                  sourceCompatibility JavaVersion.VERSION_1_8
+                  targetCompatibility JavaVersion.VERSION_1_8
               }
           }
           dependencies {
@@ -86,13 +73,11 @@ jobs:
           }
           END_GRADLE
 
-          # Buat settings.gradle
           cat << 'END_SETTINGS' > myapp/settings.gradle
           rootProject.name = "AetherTerminal"
           include ':app'
           END_SETTINGS
 
-          # Buat build.gradle tingkat root
           cat << 'END_ROOT' > myapp/build.gradle
           plugins {
               id 'com.android.application' version '8.1.1' apply false
@@ -100,7 +85,6 @@ jobs:
           }
           END_ROOT
 
-          # Buat MainActivity.kt dengan Terminal Shell & Python Runner Sungguhan
           cat << 'END_MAIN' > myapp/app/src/main/java/com/aether/terminal/MainActivity.kt
           package com.aether.terminal
 
@@ -113,21 +97,17 @@ jobs:
           class MainActivity : AppCompatActivity() {
               private lateinit var outputLog: TextView
               private lateinit var commandInput: EditText
-              private lateinit var runButton: Button
-              private lateinit var clearButton: Button
               private val logBuilder = StringBuilder()
 
               override fun onCreate(savedInstanceState: Bundle?) {
                   super.onCreate(savedInstanceState)
-                  
                   val layout = LinearLayout(this).apply {
                       orientation = LinearLayout.VERTICAL
                       setPadding(24, 24, 24, 24)
                       setBackgroundColor(android.graphics.Color.parseColor("#030712"))
                   }
-
                   val title = TextView(this).apply {
-                      text = "⚡ AetherAI Terminal & Shell"
+                      text = "⚡ AetherAI Terminal Shell"
                       textSize = 18f
                       setTextColor(android.graphics.Color.parseColor("#34D399"))
                       setPadding(0, 0, 0, 16)
@@ -139,11 +119,8 @@ jobs:
                       setTextColor(android.graphics.Color.parseColor("#E2E8F0"))
                       typeface = android.graphics.Typeface.MONOSPACE
                   }
-                  
                   val scroll = ScrollView(this).apply {
-                      layoutParams = LinearLayout.LayoutParams(
-                          LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f
-                      )
+                      layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f)
                       setBackgroundColor(android.graphics.Color.parseColor("#000000"))
                       setPadding(12, 12, 12, 12)
                       addView(outputLog)
@@ -154,9 +131,8 @@ jobs:
                       orientation = LinearLayout.HORIZONTAL
                       setPadding(0, 16, 0, 0)
                   }
-
                   commandInput = EditText(this).apply {
-                      hint = "Ketik perintah (cth: ls, pwd, python)..."
+                      hint = "Ketik perintah cth: ls, pwd..."
                       setTextColor(android.graphics.Color.WHITE)
                       setHintTextColor(android.graphics.Color.GRAY)
                       textSize = 14f
@@ -164,8 +140,8 @@ jobs:
                   }
                   inputLayout.addView(commandInput)
 
-                  runButton = Button(this).apply {
-                      text = "Eksekusi"
+                  val runButton = Button(this).apply {
+                      text = "Jalankan"
                       setBackgroundColor(android.graphics.Color.parseColor("#059669"))
                       setTextColor(android.graphics.Color.WHITE)
                       setOnClickListener {
@@ -179,23 +155,8 @@ jobs:
                   }
                   inputLayout.addView(runButton)
                   layout.addView(inputLayout)
-
-                  clearButton = Button(this).apply {
-                      text = "Bersihkan Layar Terminal"
-                      setBackgroundColor(android.graphics.Color.parseColor("#1E293B"))
-                      setTextColor(android.graphics.Color.parseColor("#38BDF8"))
-                      setOnClickListener {
-                          logBuilder.clear()
-                          outputLog.text = ""
-                      }
-                      layoutParams = LinearLayout.LayoutParams(
-                          LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
-                      ).apply { setTopMargin(12) }
-                  }
-                  layout.addView(clearButton)
-
                   setContentView(layout)
-                  appendLog("Selamat datang di AetherAI Terminal!\nJalankan perintah sistem atau uji skrip langsung di sini.\n")
+                  appendLog("Terminal siap digunakan.\n")
               }
 
               private fun appendLog(text: String) {
@@ -208,44 +169,27 @@ jobs:
                       try {
                           val process = Runtime.getRuntime().exec(arrayOf("sh", "-c", command))
                           val reader = BufferedReader(InputStreamReader(process.inputStream))
-                          val errReader = BufferedReader(InputStreamReader(process.errorStream))
-                          
                           val res = StringBuilder()
                           var line: String?
                           while (reader.readLine().also { line = it } != null) {
                               res.append(line).append("\n")
                           }
-                          while (errReader.readLine().also { line = it } != null) {
-                              res.append(line).append("\n")
-                          }
                           process.waitFor()
-                          
-                          val output = res.toString().trim()
-                          runOnUiThread {
-                              if (output.isNotEmpty()) {
-                                  appendLog(output)
-                              } else {
-                                  appendLog("Perintah selesai tanpa output.")
-                              }
-                          }
+                          runOnUiThread { appendLog(res.toString().trim()) }
                       } catch (e: Exception) {
-                          runOnUiThread {
-                              appendLog("Error: ${e.message}")
-                          }
+                          runOnUiThread { appendLog("Error: ${e.message}") }
                       }
                   }.start()
               }
           }
           END_MAIN
 
-      - name: Kompilasi APK Instan
+      - name: Build APK Clean
         working-directory: myapp
         run: |
-          chmod +x gradlew || true
-          gradle wrapper
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleDebug --no-daemon || gradle assembleDebug --no-daemon
 
-      - name: Upload APK Hasil Build
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Aether-Terminal-APK
