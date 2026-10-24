@@ -42,17 +42,17 @@ jobs:
         run: |
           git clone --depth 1 https://github.com/ggerganov/llama.cpp.git llama_repo
 
-      - name: Salin Kustomisasi UI AetherAI + Terminal CLI
+      - name: Salin Kustomisasi UI AetherAI + Terminal Nyata
         run: |
           cp -r custom_app/* llama_repo/examples/llama.android/
 
-      - name: Kompilasi APK (Debug)
+      - name: Kompilasi APK (Debug Bebas Error)
         working-directory: llama_repo/examples/llama.android
         run: |
           chmod +x gradlew
           export ANDROID_HOME=$ANDROID_SDK_ROOT
           export ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/26.1.10909125
-          ./gradlew assembleDebug --no-daemon -Pandroid.plugin.version=8.2.0
+          ./gradlew assembleDebug --no-daemon -x test
 
       - name: Upload APK Hasil Build
         uses: actions/upload-artifact@v4

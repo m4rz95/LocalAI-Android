@@ -120,7 +120,7 @@ fun AetherMultimodalScreen(viewModel: MainViewModel) {
     }
     var selectedPersona by remember { mutableStateOf("Multimodal Vision") }
     var isImporting by remember { mutableStateOf(false) }
-    var activeTab by remember { mutableStateOf(0) } // 0=Chat, 1=Gambar, 2=Terminal CLI, 3=Model, 4=Sistem
+    var activeTab by remember { mutableStateOf(0) }
     var refreshTrigger by remember { mutableStateOf(0) }
 
     var attachedBitmap by remember { mutableStateOf<Bitmap?>(null) }
@@ -132,9 +132,9 @@ fun AetherMultimodalScreen(viewModel: MainViewModel) {
     var isGeneratingImage by remember { mutableStateOf(false) }
     var useHybridCloudGen by remember { mutableStateOf(false) }
 
-    // State untuk Terminal CLI Mini
+    // State Terminal CLI Nyata
     var cliInput by remember { mutableStateOf("") }
-    val cliLogs = remember { mutableStateListOf<String>("AetherAI Terminal v1.0 [Android Native Shell]", "Ketik perintah Linux/Termux atau 'help'...") }
+    val cliLogs = remember { mutableStateListOf<String>("AetherAI Terminal v2.0 [Android Native Shell Engine]", "Ketik perintah shell (cth: 'ls', 'pwd', 'id', 'df') atau 'help'...") }
     val cliListState = rememberLazyListState()
 
     val personas = listOf(
@@ -317,7 +317,6 @@ fun AetherMultimodalScreen(viewModel: MainViewModel) {
             }
         }
 
-        // 5 TAB NAVIGASI UTAMA (DENGAN TAB TERMINAL CLI)
         ScrollableTabRow(
             selectedTabIndex = activeTab,
             containerColor = Color(0xFF0B0F19),
@@ -397,7 +396,7 @@ fun AetherMultimodalScreen(viewModel: MainViewModel) {
                                         )
                                         Spacer(modifier = Modifier.height(6.dp))
                                         Text(
-                                            text = "• Ketuk tombol [📷 Foto] di kiri bawah untuk mengirim gambar dan meminta AI mengartikannya.\n• Buka tab [💻 Terminal CLI] untuk menjalankan perintah shell layaknya di Termux.",
+                                            text = "• Ketuk tombol [📷 Foto] untuk mengirim gambar dan meminta AI mengartikannya.\n• Buka tab [💻 Terminal CLI] untuk menjalankan perintah shell nyata.",
                                             fontSize = 12.sp,
                                             color = Color(0xFF64748B)
                                         )
@@ -693,16 +692,16 @@ fun AetherMultimodalScreen(viewModel: MainViewModel) {
                 }
 
                 2 -> {
-                    // TAB 2: MINI TERMINAL CLI (TERMUX STYLE)
+                    // TAB 2: TERMINAL CLI NYATA (ANDROID SHELL)
                     Column(
                         modifier = Modifier.fillMaxSize().background(Color(0xFF030712)).padding(10.dp)
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
-                            alignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("AetherAI Embedded CLI Shell", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF34D399))
+                            Text("AetherAI Native Shell CLI", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF34D399))
                             OutlinedButton(
                                 onClick = { cliLogs.clear(); cliLogs.add("Terminal dibersihkan.") },
                                 modifier = Modifier.height(28.dp),
@@ -712,7 +711,6 @@ fun AetherMultimodalScreen(viewModel: MainViewModel) {
                             }
                         }
 
-                        // Jendela Output Terminal Konsol Hitam
                         LazyColumn(
                             state = cliListState,
                             modifier = Modifier
@@ -736,22 +734,18 @@ fun AetherMultimodalScreen(viewModel: MainViewModel) {
 
                         Spacer(modifier = Modifier.height(6.dp))
 
-                        // Tombol Pintasan Cepat Terminal (Ctrl, Esc, Tab, ls, pwd, python)
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
                             horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            listOf("ls -l", "pwd", "uname -a", "date", "python --version", "clear").forEach { cmd ->
+                            listOf("ls -la", "pwd", "id", "df -h", "date", "clear").forEach { cmd ->
                                 AssistChip(
-                                    onClick = {
-                                        cliInput = cmd
-                                    },
+                                    onClick = { cliInput = cmd },
                                     label = { Text(cmd, fontSize = 10.sp, fontFamily = FontFamily.Monospace) }
                                 )
                             }
                         }
 
-                        // Baris Input Perintah Terminal
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
@@ -1066,7 +1060,7 @@ fun renderOfflineNeuralArtwork(prompt: String, style: String): Bitmap {
     return bmp
 }
 
-fun fetchFluxImageOrFallback(prompt:Strig, style: String): Bitmap {
+fun fetchFluxImageOrFallback(prompt: String, style: String): Bitmap {
     return try {
         val encoded = URLEncoder.encode(prompt, "UTF-8")
         val url = URL("https://image.pollinations.ai/prompt/$encoded?width=768&height=768&nologo=true")
