@@ -18,24 +18,28 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Android SDK & NDK
-        uses: android-actions/setup-android@v3
+      - name: Install Android SDK & NDK with License Agreement
+        uses: android-actions/setup-android@v2
 
-      - name: Clone Mesin Resmi llama.cpp Terbaru
+      - name: Install NDK and Build Tools
+        run: |
+          sdkmanager --install "ndk;26.1.10909125" "cmake;3.22.1" "platforms;android-34" "build-tools;34.0.0"
+
+      - name: Clone Mesin Resmi llama.cpp
         run: |
           git clone --depth 1 https://github.com/ggerganov/llama.cpp.git llama_repo
 
-      - name: Pasang Kode AetherAI Multimodal ke llama.android
+      - name: Salin Kustomisasi UI AetherAI
         run: |
           cp -r custom_app/* llama_repo/examples/llama.android/
 
-      - name: Kompilasi Native C++ & Build APK Mandiri
+      - name: Kompilasi APK (Debug)
         working-directory: llama_repo/examples/llama.android
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
 
-      - name: Upload AetherAI Studio APK
+      - name: Upload APK Hasil Build
         uses: actions/upload-artifact@v4
         with:
           name: AetherAI-Multimodal-APK
