@@ -33,6 +33,8 @@ jobs:
           sdkmanager "platforms;android-34" "build-tools;34.0.0" "ndk;26.1.10909125" "cmake;3.22.1"
           
           echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
+          echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
+          echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/26.1.10909125" >> $GITHUB_ENV
           echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin" >> $GITHUB_PATH
           echo "$ANDROID_SDK_ROOT/platform-tools" >> $GITHUB_PATH
 
@@ -48,8 +50,9 @@ jobs:
         working-directory: llama_repo/examples/llama.android
         run: |
           chmod +x gradlew
+          export ANDROID_HOME=$ANDROID_SDK_ROOT
           export ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/26.1.10909125
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleDebug --no-daemon -Pandroid.plugin.version=8.2.0
 
       - name: Upload APK Hasil Build
         uses: actions/upload-artifact@v4
