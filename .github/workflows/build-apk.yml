@@ -42,7 +42,7 @@ jobs:
         run: |
           git clone --depth 1 https://github.com/ggerganov/llama.cpp.git llama_repo
 
-      - name: Salin Kustomisasi UI AetherAI
+      - name: Salin Kustomisasi UI AetherAI + Terminal CLI
         run: |
           cp -r custom_app/* llama_repo/examples/llama.android/
 

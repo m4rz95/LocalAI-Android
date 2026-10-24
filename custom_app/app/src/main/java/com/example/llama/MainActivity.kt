@@ -44,6 +44,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -51,8 +52,10 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.BufferedReader
 import java.io.File
 import java.io.FileOutputStream
+import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
@@ -117,7 +120,7 @@ fun AetherMultimodalScreen(viewModel: MainViewModel) {
     }
     var selectedPersona by remember { mutableStateOf("Multimodal Vision") }
     var isImporting by remember { mutableStateOf(false) }
-    var activeTab by remember { mutableStateOf(0) }
+    var activeTab by remember { mutableStateOf(0) } // 0=Chat, 1=Gambar, 2=Terminal CLI, 3=Model, 4=Sistem
     var refreshTrigger by remember { mutableStateOf(0) }
 
     var attachedBitmap by remember { mutableStateOf<Bitmap?>(null) }
@@ -128,6 +131,11 @@ fun AetherMultimodalScreen(viewModel: MainViewModel) {
     var generatedBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var isGeneratingImage by remember { mutableStateOf(false) }
     var useHybridCloudGen by remember { mutableStateOf(false) }
+
+    // State untuk Terminal CLI Mini
+    var cliInput by remember { mutableStateOf("") }
+    val cliLogs = remember { mutableStateListOf<String>("AetherAI Terminal v1.0 [Android Native Shell]", "Ketik perintah Linux/Termux atau 'help'...") }
+    val cliListState = rememberLazyListState()
 
     val personas = listOf(
         "Multimodal Vision" to "Anda adalah AetherAI Multimodal. Analisis setiap deskripsi visual, foto, warna, dan konteks gambar yang diberikan pengguna secara tajam dan mendetail.",
@@ -174,6 +182,12 @@ fun AetherMultimodalScreen(viewModel: MainViewModel) {
     LaunchedEffect(viewModel.messages.size) {
         if (viewModel.messages.isNotEmpty()) {
             listState.animateScrollToItem(viewModel.messages.size - 1)
+        }
+    }
+
+    LaunchedEffect(cliLogs.size) {
+        if (cliLogs.isNotEmpty()) {
+            cliListState.animateScrollToItem(cliLogs.size - 1)
         }
     }
 
@@ -303,6 +317,7 @@ fun AetherMultimodalScreen(viewModel: MainViewModel) {
             }
         }
 
+        // 5 TAB NAVIGASI UTAMA (DENGAN TAB TERMINAL CLI)
         ScrollableTabRow(
             selectedTabIndex = activeTab,
             containerColor = Color(0xFF0B0F19),
@@ -322,11 +337,16 @@ fun AetherMultimodalScreen(viewModel: MainViewModel) {
             Tab(
                 selected = activeTab == 2,
                 onClick = { activeTab = 2 },
-                text = { Text("📦 Model (${installedModels.size})", fontSize = 12.sp, fontWeight = FontWeight.SemiBold) }
+                text = { Text("💻 Terminal CLI", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF34D399)) }
             )
             Tab(
                 selected = activeTab == 3,
                 onClick = { activeTab = 3 },
+                text = { Text("📦 Model (${installedModels.size})", fontSize = 12.sp, fontWeight = FontWeight.SemiBold) }
+            )
+            Tab(
+                selected = activeTab == 4,
+                onClick = { activeTab = 4 },
                 text = { Text("🧠 Otak Sistem", fontSize = 12.sp, fontWeight = FontWeight.SemiBold) }
             )
         }
@@ -377,7 +397,7 @@ fun AetherMultimodalScreen(viewModel: MainViewModel) {
                                         )
                                         Spacer(modifier = Modifier.height(6.dp))
                                         Text(
-                                            text = "• Ketuk tombol [📷 Foto] di kiri bawah untuk mengirim gambar dan meminta AI mengartikannya.\n• Buka tab [🎨 Buat Gambar] untuk menghasilkan gambar dari teks.",
+                                            text = "• Ketuk tombol [📷 Foto] di kiri bawah untuk mengirim gambar dan meminta AI mengartikannya.\n• Buka tab [💻 Terminal CLI] untuk menjalankan perintah shell layaknya di Termux.",
                                             fontSize = 12.sp,
                                             color = Color(0xFF64748B)
                                         )
@@ -673,6 +693,133 @@ fun AetherMultimodalScreen(viewModel: MainViewModel) {
                 }
 
                 2 -> {
+                    // TAB 2: MINI TERMINAL CLI (TERMUX STYLE)
+                    Column(
+                        modifier = Modifier.fillMaxSize().background(Color(0xFF030712)).padding(10.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            alignment = Alignment.CenterVertically
+                        ) {
+                            Text("AetherAI Embedded CLI Shell", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF34D399))
+                            OutlinedButton(
+                                onClick = { cliLogs.clear(); cliLogs.add("Terminal dibersihkan.") },
+                                modifier = Modifier.height(28.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                            ) {
+                                Text("Clear", fontSize = 10.sp)
+                            }
+                        }
+
+                        // Jendela Output Terminal Konsol Hitam
+                        LazyColumn(
+                            state = cliListState,
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color(0xFF000000))
+                                .border(1.dp, Color(0xFF1F2937), RoundedCornerShape(8.dp))
+                                .padding(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            itemsIndexed(cliLogs) { _, log ->
+                                Text(
+                                    text = log,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 12.sp,
+                                    color = if (log.startsWith("$")) Color(0xFF38BDF8) else if (log.startsWith("Error")) Color(0xFFF87171) else Color(0xFFE2E8F0)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        // Tombol Pintasan Cepat Terminal (Ctrl, Esc, Tab, ls, pwd, python)
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            listOf("ls -l", "pwd", "uname -a", "date", "python --version", "clear").forEach { cmd ->
+                                AssistChip(
+                                    onClick = {
+                                        cliInput = cmd
+                                    },
+                                    label = { Text(cmd, fontSize = 10.sp, fontFamily = FontFamily.Monospace) }
+                                )
+                            }
+                        }
+
+                        // Baris Input Perintah Terminal
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("$ ", fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, color = Color(0xFF34D399), fontSize = 14.sp)
+                            OutlinedTextField(
+                                value = cliInput,
+                                onValueChange = { cliInput = it },
+                                placeholder = { Text("Ketik perintah shell...", fontSize = 12.sp) },
+                                modifier = Modifier.weight(1f),
+                                singleLine = true,
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Button(
+                                onClick = {
+                                    if (cliInput.isBlank()) return@Button
+                                    val command = cliInput
+                                    cliLogs.add("$ $command")
+                                    cliInput = ""
+
+                                    if (command == "clear") {
+                                        cliLogs.clear()
+                                        return@Button
+                                    }
+
+                                    scope.launch(Dispatchers.IO) {
+                                        try {
+                                            val process = Runtime.getRuntime().exec(arrayOf("sh", "-c", command))
+                                            val reader = BufferedReader(InputStreamReader(process.inputStream))
+                                            val errReader = BufferedReader(InputStreamReader(process.errorStream))
+                                            
+                                            val output = StringBuilder()
+                                            var line: String?
+                                            while (reader.readLine().also { line = it } != null) {
+                                                output.append(line).append("\n")
+                                            }
+                                            while (errReader.readLine().also { line = it } != null) {
+                                                output.append(line).append("\n")
+                                            }
+                                            process.waitFor()
+                                            
+                                            val res = output.toString().trim()
+                                            withContext(Dispatchers.Main) {
+                                                if (res.isNotEmpty()) {
+                                                    cliLogs.add(res)
+                                                } else {
+                                                    cliLogs.add("Perintah dijalankan tanpa output.")
+                                                }
+                                            }
+                                        } catch (e: Exception) {
+                                            withContext(Dispatchers.Main) {
+                                                cliLogs.add("Error: ${e.message}")
+                                            }
+                                        }
+                                    }
+                                },
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.height(50.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF059669))
+                            ) {
+                                Text("Enter", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+
+                3 -> {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize().padding(14.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -790,7 +937,7 @@ fun AetherMultimodalScreen(viewModel: MainViewModel) {
                     }
                 }
 
-                3 -> {
+                4 -> {
                     Column(
                         modifier = Modifier.fillMaxSize().padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -919,7 +1066,7 @@ fun renderOfflineNeuralArtwork(prompt: String, style: String): Bitmap {
     return bmp
 }
 
-fun fetchFluxImageOrFallback(prompt: String, style: String): Bitmap {
+fun fetchFluxImageOrFallback(prompt:Strig, style: String): Bitmap {
     return try {
         val encoded = URLEncoder.encode(prompt, "UTF-8")
         val url = URL("https://image.pollinations.ai/prompt/$encoded?width=768&height=768&nologo=true")
